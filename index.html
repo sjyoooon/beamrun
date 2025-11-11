@@ -179,8 +179,13 @@
     const imageCache = new Map();
     function loadImageOnce(src){
       if(imageCache.has(src)) return imageCache.get(src);
-      const e = { img:new Image(), ok:false, loaded:false };
-      e.img.onload = ()=>{ e.ok=true; e.loaded=true; };
+      const e = { img:new Image(), ok:false, loaded:false, width:0, height:0 };
+      e.img.onload = ()=>{
+        e.ok=true;
+        e.loaded=true;
+        e.width = e.img.naturalWidth;
+        e.height = e.img.naturalHeight;
+      };
       e.img.onerror = ()=>{ e.ok=false; e.loaded=true; };
       e.img.src = src;
       imageCache.set(src, e);
@@ -296,8 +301,16 @@
     function trySpawnObstacle(speed){
       if(state.distSinceLast < randGap) return;
 
-      const w=CONFIG.OBST_WIDTH, h=CONFIG.OBST_HEIGHT;
       const useAir = (randInt(1,100) <= CONFIG.AIR_OBST_PROB);
+      const key = useAir
+        ? `${CONFIG.AOBST_PREFIX}${curAirId}.png`
+        : `${CONFIG.OBST_PREFIX}${curGroundId}.png`;
+
+      const e = imageCache.get(key) || loadImageOnce(key);
+
+      // Use image size if loaded, otherwise use default size
+      const w = (e.loaded && e.ok && e.width > 0) ? e.width : CONFIG.OBST_WIDTH;
+      const h = (e.loaded && e.ok && e.height > 0) ? e.height : CONFIG.OBST_HEIGHT;
 
       if(useAir){
         obstacles.push({ x: CONFIG.GAME_WIDTH + w, y: CONFIG.AIR_OBST_Y, w, h, scored:false, air:true });
