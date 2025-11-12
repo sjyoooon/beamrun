@@ -102,14 +102,51 @@
       DINO_PREFIX: "sloth",     DINO_IDS: ["01","02","03"],     // sloth01_a.png / sloth01_b.png ...
       OBST_PREFIX: "prop",      OBST_IDS: ["01","02","03"],     // ground:  prop01.png ...
       AOBST_PREFIX: "propair",  AOBST_IDS: ["01","02","03"],    // air:     propair01.png ...
-      BG_PREFIX: "bg",          BG_IDS: ["01","02","03"],       // bg01.png ...
-      CLOUD_PREFIX: "cloud",    CLOUD_IDS: ["01","02","03"],    // cloud01.png ...
 
       // Fallbacks (when images missing)
       DINO_FALLBACK_COLOR: "#000000",
       OBST_FALLBACK_COLOR: "#e53935",
-      BG_FALLBACK_COLOR:   "#ffd54f",  BG_FALLBACK_SIZE: 80,   // yellow square
-      CLOUD_FALLBACK_COLOR:"#43a047",  CLOUD_FALLBACK_SIZE: 24,// green square
+
+      // ===== 4-Layer Parallax Background =====
+      // Layer 1: Far Background (원경 - 가장 느림)
+      LAYER_FAR_PREFIX: "bgfar",
+      LAYER_FAR_IDS: ["01","02","03"],
+      LAYER_FAR_SCROLL_PARALLAX: 0.2,     // slowest
+      LAYER_FAR_DRAW_WIDTH: 400,
+      LAYER_FAR_DRAW_HEIGHT: 180,
+      LAYER_FAR_Y: 40,
+      LAYER_FAR_FALLBACK_ALPHA: 0.3,
+
+      // Layer 2: Background (배경)
+      LAYER_BG_PREFIX: "bg",
+      LAYER_BG_IDS: ["01","02","03"],
+      LAYER_BG_SCROLL_PARALLAX: 0.4,
+      LAYER_BG_DRAW_WIDTH: 400,
+      LAYER_BG_DRAW_HEIGHT: 180,
+      LAYER_BG_Y: 40,
+      LAYER_BG_FALLBACK_ALPHA: 0.5,
+
+      // Layer 3: Midground (중경)
+      LAYER_MID_PREFIX: "bgmid",
+      LAYER_MID_IDS: ["01","02","03"],
+      LAYER_MID_SCROLL_PARALLAX: 0.6,
+      LAYER_MID_DRAW_WIDTH: 400,
+      LAYER_MID_DRAW_HEIGHT: 180,
+      LAYER_MID_Y: 40,
+      LAYER_MID_FALLBACK_ALPHA: 0.7,
+
+      // Layer 4: Foreground (전경 - 가장 빠름)
+      LAYER_FORE_PREFIX: "bgfore",
+      LAYER_FORE_IDS: ["01","02","03"],
+      LAYER_FORE_SCROLL_PARALLAX: 0.8,    // fastest
+      LAYER_FORE_DRAW_WIDTH: 400,
+      LAYER_FORE_DRAW_HEIGHT: 180,
+      LAYER_FORE_Y: 40,
+      LAYER_FORE_FALLBACK_ALPHA: 0.9,
+
+      // Shared fallback settings for all layers
+      LAYER_FALLBACK_COLOR: "#ffd54f",    // yellow
+      LAYER_FALLBACK_SIZE: 80,
 
       // Score
       SCORE_PER_OBSTACLE: 10,
@@ -129,22 +166,6 @@
       // Air obstacle (mutually exclusive with ground; probability based)
       AIR_OBST_PROB: 35,      // 0~100 (% chance to spawn air obstacle instead)
       AIR_OBST_Y: 120,        // top Y of the air obstacle (fixed height line)
-
-      // ===== Background (3 tiles scrolling) =====
-      BG_DRAW_WIDTH: 400,
-      BG_DRAW_HEIGHT: 180,
-      BG_Y: 40,
-      BG_SCROLL_PARALLAX: 0.5, // ratio vs scroll speed
-
-      // ===== Clouds =====
-      CLOUD_WIDTH: 64,
-      CLOUD_HEIGHT: 40,
-      CLOUD_Y_MIN: 20,
-      CLOUD_Y_MAX: 100,
-      CLOUD_SPAWN_SEC_MIN: 1.2,
-      CLOUD_SPAWN_SEC_MAX: 2.6,
-      CLOUD_SPEED_MIN: 40,    // px/s
-      CLOUD_SPEED_MAX: 90,
 
       // ===== Variable jump (hold) =====
       JUMP_MIN_HEIGHT: 60,    // px
@@ -200,20 +221,25 @@
     // ===============================
     // Per-run selections (fixed during a run)
     // ===============================
-    let curDinoId=null, curGroundId=null, curAirId=null, curBgId=null, curCloudId=null;
+    let curDinoId=null, curGroundId=null, curAirId=null;
+    let curLayerFarId=null, curLayerBgId=null, curLayerMidId=null, curLayerForeId=null;
     function chooseRunAssets(){
-      curDinoId   = pick(CONFIG.DINO_IDS);
-      curGroundId = pick(CONFIG.OBST_IDS);
-      curAirId    = pick(CONFIG.AOBST_IDS);
-      curBgId     = pick(CONFIG.BG_IDS);
-      curCloudId  = pick(CONFIG.CLOUD_IDS);
+      curDinoId     = pick(CONFIG.DINO_IDS);
+      curGroundId   = pick(CONFIG.OBST_IDS);
+      curAirId      = pick(CONFIG.AOBST_IDS);
+      curLayerFarId = pick(CONFIG.LAYER_FAR_IDS);
+      curLayerBgId  = pick(CONFIG.LAYER_BG_IDS);
+      curLayerMidId = pick(CONFIG.LAYER_MID_IDS);
+      curLayerForeId= pick(CONFIG.LAYER_FORE_IDS);
       // Preload (fallbacks if missing)
       loadImageOnce(`${CONFIG.DINO_PREFIX}${curDinoId}_a.png`);
       loadImageOnce(`${CONFIG.DINO_PREFIX}${curDinoId}_b.png`);
       loadImageOnce(`${CONFIG.OBST_PREFIX}${curGroundId}.png`);
       loadImageOnce(`${CONFIG.AOBST_PREFIX}${curAirId}.png`);
-      loadImageOnce(`${CONFIG.BG_PREFIX}${curBgId}.png`);
-      loadImageOnce(`${CONFIG.CLOUD_PREFIX}${curCloudId}.png`);
+      loadImageOnce(`${CONFIG.LAYER_FAR_PREFIX}${curLayerFarId}.png`);
+      loadImageOnce(`${CONFIG.LAYER_BG_PREFIX}${curLayerBgId}.png`);
+      loadImageOnce(`${CONFIG.LAYER_MID_PREFIX}${curLayerMidId}.png`);
+      loadImageOnce(`${CONFIG.LAYER_FORE_PREFIX}${curLayerForeId}.png`);
     }
 
     // ===============================
@@ -232,12 +258,11 @@
       holding:false, holdElapsed:0
     };
 
-    // Obstacles / clouds / background
+    // Obstacles / parallax layers
     let obstacles=[]; // {x,y,w,h,scored?:bool, air?:bool}
-    let clouds=[];    // {x,y,w,h,speed}
-    let bgTiles=[];   // {x,y,w,h}
+    let layerFarTiles=[], layerBgTiles=[], layerMidTiles=[], layerForeTiles=[]; // {x,y,w,h}
+    let layerFarAdjusted=false, layerBgAdjusted=false, layerMidAdjusted=false, layerForeAdjusted=false;
     let randGap=0;
-    let cloudSpawnTimer=0, cloudSpawnNext=0;
 
     // Variable jump precompute
     const v0_min = Math.sqrt(2*CONFIG.GRAVITY*CONFIG.JUMP_MIN_HEIGHT);
@@ -269,15 +294,18 @@
 
       chooseRunAssets();
 
-      obstacles.length=0; clouds.length=0; bgTiles.length=0;
+      obstacles.length=0;
+      layerFarTiles.length=0; layerBgTiles.length=0;
+      layerMidTiles.length=0; layerForeTiles.length=0;
+      layerFarAdjusted=false; layerBgAdjusted=false;
+      layerMidAdjusted=false; layerForeAdjusted=false;
       randGap = randInt(CONFIG.OBST_MIN_GAP, CONFIG.OBST_MAX_GAP);
 
-      // Background tiles (3)
-      const w=CONFIG.BG_DRAW_WIDTH, h=CONFIG.BG_DRAW_HEIGHT, y=CONFIG.BG_Y;
-      bgTiles.push({x:0,y,w,h},{x:w,y,w,h},{x:2*w,y,w,h});
-
-      cloudSpawnTimer=0;
-      cloudSpawnNext=randFloat(CONFIG.CLOUD_SPAWN_SEC_MIN, CONFIG.CLOUD_SPAWN_SEC_MAX);
+      // Initialize 4 parallax layers (3 tiles each for seamless scrolling)
+      initLayerTiles(layerFarTiles, CONFIG.LAYER_FAR_DRAW_WIDTH, CONFIG.LAYER_FAR_DRAW_HEIGHT, CONFIG.LAYER_FAR_Y);
+      initLayerTiles(layerBgTiles, CONFIG.LAYER_BG_DRAW_WIDTH, CONFIG.LAYER_BG_DRAW_HEIGHT, CONFIG.LAYER_BG_Y);
+      initLayerTiles(layerMidTiles, CONFIG.LAYER_MID_DRAW_WIDTH, CONFIG.LAYER_MID_DRAW_HEIGHT, CONFIG.LAYER_MID_Y);
+      initLayerTiles(layerForeTiles, CONFIG.LAYER_FORE_DRAW_WIDTH, CONFIG.LAYER_FORE_DRAW_HEIGHT, CONFIG.LAYER_FORE_Y);
 
       overlay.style.display="none";
       scoreEl.textContent = `SCORE: ${state.score}`;
@@ -293,6 +321,54 @@
       }
       highScoreEl.textContent = `HIGH SCORE: ${state.highScore}`;
       overlay.style.display = "grid";
+    }
+
+    // ===============================
+    // Layer initialization & scrolling helpers
+    // ===============================
+    function initLayerTiles(tilesArray, width, height, y){
+      tilesArray.push({x:0, y, w:width, h:height});
+      tilesArray.push({x:width, y, w:width, h:height});
+      tilesArray.push({x:width*2, y, w:width, h:height});
+    }
+
+    // Adjust tiles based on actual image size (called once image loads)
+    function adjustLayerForImage(tilesArray, imgWidth, imgHeight, targetHeight){
+      if(tilesArray.length===0 || !imgWidth || !imgHeight) return;
+
+      // Calculate scaled width maintaining aspect ratio
+      const aspectRatio = imgWidth / imgHeight;
+      const scaledWidth = targetHeight * aspectRatio;
+
+      // Calculate how many tiles needed to cover screen + buffer
+      const tilesNeeded = Math.ceil(CONFIG.GAME_WIDTH / scaledWidth) + 2;
+
+      // Update existing tiles and add more if needed
+      const y = tilesArray[0].y;
+      tilesArray.length = 0;
+      for(let i = 0; i < tilesNeeded; i++){
+        tilesArray.push({x: i * scaledWidth, y, w: scaledWidth, h: targetHeight});
+      }
+    }
+
+    function updateLayerScroll(tilesArray, scrollDelta){
+      if(tilesArray.length===0) return;
+      const tileW = tilesArray[0].w;
+      let maxX = -Infinity;
+
+      // Move all tiles left
+      for(const t of tilesArray){
+        t.x -= scrollDelta;
+        if(t.x > maxX) maxX = t.x;
+      }
+
+      // Wrap tiles that moved off-screen to the right
+      for(const t of tilesArray){
+        if(t.x + tileW < 0){
+          t.x = maxX + tileW;
+          maxX = t.x;
+        }
+      }
     }
 
     // ===============================
@@ -320,16 +396,6 @@
 
       state.distSinceLast = 0;
       randGap = randInt(CONFIG.OBST_MIN_GAP, CONFIG.OBST_MAX_GAP);
-    }
-
-    function trySpawnCloud(dt){
-      cloudSpawnTimer += dt;
-      if(cloudSpawnTimer < cloudSpawnNext) return;
-      cloudSpawnTimer = 0;
-      cloudSpawnNext = randFloat(CONFIG.CLOUD_SPAWN_SEC_MIN, CONFIG.CLOUD_SPAWN_SEC_MAX);
-      const y = randInt(CONFIG.CLOUD_Y_MIN, CONFIG.CLOUD_Y_MAX);
-      const speed = randFloat(CONFIG.CLOUD_SPEED_MIN, CONFIG.CLOUD_SPEED_MAX);
-      clouds.push({ x: CONFIG.GAME_WIDTH + CONFIG.CLOUD_WIDTH, y, w:CONFIG.CLOUD_WIDTH, h:CONFIG.CLOUD_HEIGHT, speed });
     }
 
     // ===============================
@@ -401,7 +467,6 @@
 
       // Spawns
       trySpawnObstacle(speed);
-      trySpawnCloud(dt);
 
       // Obstacles update
       for(let i=obstacles.length-1;i>=0;i--){
@@ -419,19 +484,11 @@
         if(ob.x + ob.w < -50) obstacles.splice(i,1);
       }
 
-      // Clouds update
-      for(let i=clouds.length-1;i>=0;i--){
-        const c = clouds[i];
-        c.x -= c.speed * dt;
-        if(c.x + c.w < -10) clouds.splice(i,1);
-      }
-
-      // Background scroll (3 tiles loop)
-      const scroll = speed * CONFIG.BG_SCROLL_PARALLAX * dt;
-      const tileW = CONFIG.BG_DRAW_WIDTH;
-      let maxX = -Infinity;
-      for(const t of bgTiles){ t.x -= scroll; if(t.x>maxX) maxX=t.x; }
-      for(const t of bgTiles){ if(t.x + tileW < 0){ t.x = maxX + tileW; maxX = t.x; } }
+      // Update 4 parallax layers (each with different scroll speed)
+      updateLayerScroll(layerFarTiles, speed * CONFIG.LAYER_FAR_SCROLL_PARALLAX * dt);
+      updateLayerScroll(layerBgTiles, speed * CONFIG.LAYER_BG_SCROLL_PARALLAX * dt);
+      updateLayerScroll(layerMidTiles, speed * CONFIG.LAYER_MID_SCROLL_PARALLAX * dt);
+      updateLayerScroll(layerForeTiles, speed * CONFIG.LAYER_FORE_SCROLL_PARALLAX * dt);
 
       render();
       requestAnimationFrame(loop);
@@ -443,11 +500,11 @@
     function render(){
       ctx.clearRect(0,0,CONFIG.GAME_WIDTH,CONFIG.GAME_HEIGHT);
 
-      // Background
-      drawBackground();
-
-      // Clouds
-      for(const c of clouds) drawCloud(c);
+      // 4 parallax layers (back to front)
+      layerFarAdjusted = drawLayer(layerFarTiles, CONFIG.LAYER_FAR_PREFIX, curLayerFarId, CONFIG.LAYER_FAR_FALLBACK_ALPHA, CONFIG.LAYER_FAR_DRAW_HEIGHT, layerFarAdjusted);
+      layerBgAdjusted = drawLayer(layerBgTiles, CONFIG.LAYER_BG_PREFIX, curLayerBgId, CONFIG.LAYER_BG_FALLBACK_ALPHA, CONFIG.LAYER_BG_DRAW_HEIGHT, layerBgAdjusted);
+      layerMidAdjusted = drawLayer(layerMidTiles, CONFIG.LAYER_MID_PREFIX, curLayerMidId, CONFIG.LAYER_MID_FALLBACK_ALPHA, CONFIG.LAYER_MID_DRAW_HEIGHT, layerMidAdjusted);
+      layerForeAdjusted = drawLayer(layerForeTiles, CONFIG.LAYER_FORE_PREFIX, curLayerForeId, CONFIG.LAYER_FORE_FALLBACK_ALPHA, CONFIG.LAYER_FORE_DRAW_HEIGHT, layerForeAdjusted);
 
       // Ground line
       ctx.strokeStyle="#ddd";
@@ -463,32 +520,31 @@
       for(const ob of obstacles) drawObstacle(ob);
     }
 
-    function drawBackground(){
-      const key = `${CONFIG.BG_PREFIX}${curBgId}.png`;
+    function drawLayer(tilesArray, prefix, id, fallbackAlpha, targetHeight, alreadyAdjusted){
+      const key = `${prefix}${id}.png`;
       const e = imageCache.get(key) || loadImageOnce(key);
-      for(const t of bgTiles){
+
+      // Adjust tiles once when image loads
+      if(e.loaded && e.ok && !alreadyAdjusted){
+        adjustLayerForImage(tilesArray, e.width, e.height, targetHeight);
+        alreadyAdjusted = true;
+      }
+
+      for(const t of tilesArray){
         if(e.loaded && e.ok){
           ctx.drawImage(e.img, t.x, t.y, t.w, t.h);
         }else{
-          ctx.fillStyle = CONFIG.BG_FALLBACK_COLOR;
-          const s = CONFIG.BG_FALLBACK_SIZE;
+          // Fallback: yellow square with layer-specific alpha
+          ctx.globalAlpha = fallbackAlpha;
+          ctx.fillStyle = CONFIG.LAYER_FALLBACK_COLOR;
+          const s = CONFIG.LAYER_FALLBACK_SIZE;
           const cx = t.x + (t.w - s)/2, cy = t.y + (t.h - s)/2;
           ctx.fillRect(cx, cy, s, s);
+          ctx.globalAlpha = 1.0; // reset
         }
       }
-    }
 
-    function drawCloud(c){
-      const key = `${CONFIG.CLOUD_PREFIX}${curCloudId}.png`;
-      const e = imageCache.get(key) || loadImageOnce(key);
-      if(e.loaded && e.ok){
-        ctx.drawImage(e.img, c.x, c.y, c.w, c.h);
-      }else{
-        ctx.fillStyle = CONFIG.CLOUD_FALLBACK_COLOR;
-        const s = CONFIG.CLOUD_FALLBACK_SIZE;
-        const cx = c.x + (c.w - s)/2, cy = c.y + (c.h - s)/2;
-        ctx.fillRect(cx, cy, s, s);
-      }
+      return alreadyAdjusted;
     }
 
     function drawDino(){
