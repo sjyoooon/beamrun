@@ -560,14 +560,25 @@
           scoreEl.textContent = `SCORE: ${state.score}`;
         }
 
+        // Get current dino frame image to determine actual boundary
+        const frame = Math.floor(state.animTime * 8) % 2;
+        const dinoKey = `${CONFIG.DINO_PREFIX}${curDinoId}_${frame===0?"a":"b"}.png`;
+        const dinoEntry = imageCache.get(dinoKey);
+
+        // Calculate actual dino dimensions (image boundary if loaded, fallback to CONFIG otherwise)
+        let dinoDrawW, dinoDrawH;
+        if(dinoEntry && dinoEntry.loaded && dinoEntry.ok){
+          dinoDrawW = dinoEntry.width * CONFIG.DINO_IMAGE_SCALE;
+          dinoDrawH = dinoEntry.height * CONFIG.DINO_IMAGE_SCALE;
+        }else{
+          dinoDrawW = dino.w;
+          dinoDrawH = dino.h;
+        }
+
         // Check collision with alpha-based detection if images are loaded
         let collision = false;
-        if(rectsOverlap(dino.x,dino.y,dino.w,dino.h, ob.x,ob.y,ob.w,ob.h)){
-          // Get current dino frame image
-          const frame = Math.floor(state.animTime * 8) % 2;
-          const dinoKey = `${CONFIG.DINO_PREFIX}${curDinoId}_${frame===0?"a":"b"}.png`;
-          const dinoEntry = imageCache.get(dinoKey);
-
+        // Stage 1: Rectangle collision using actual image boundaries
+        if(rectsOverlap(dino.x,dino.y,dinoDrawW,dinoDrawH, ob.x,ob.y,ob.w,ob.h)){
           // Get obstacle image
           const isAir = !!ob.air;
           const obKey = isAir
@@ -575,11 +586,8 @@
             : `${CONFIG.OBST_PREFIX}${curGroundId}.png`;
           const obEntry = imageCache.get(obKey);
 
-          // Use alpha collision if both images have pixel data
+          // Stage 2: Use alpha collision if both images have pixel data
           if(dinoEntry && dinoEntry.pixelData && obEntry && obEntry.pixelData){
-            // Calculate actual draw dimensions for dino
-            const dinoDrawW = dinoEntry.width * CONFIG.DINO_IMAGE_SCALE;
-            const dinoDrawH = dinoEntry.height * CONFIG.DINO_IMAGE_SCALE;
             collision = alphaCollision(
               dino.x, dino.y, dinoDrawW, dinoDrawH, dinoEntry,
               ob.x, ob.y, ob.w, ob.h, obEntry
