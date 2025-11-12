@@ -109,10 +109,10 @@
     // ===============================
     const CONFIG = {
       GAME_WIDTH: 800,
-      GAME_HEIGHT: 600,
+      GAME_HEIGHT: 800,
 
       // Player / ground
-      GROUND_Y: 300,
+      GROUND_Y: 500,
       DINO_X: 60,
       DINO_WIDTH: 72,
       DINO_HEIGHT: 84,
@@ -182,25 +182,25 @@
 
       // ===== Scroll speed curve (affects obstacles & background) =====
       SPEED_BASE: 280,        // px/s (base)
-      SPEED_MAX_MULT: 2.5,    // max multiplier (final speed = base * this)
-      SPEED_RAMP_SECONDS: 60, // seconds to reach max multiplier (linear)
+      SPEED_MAX_MULT: 3,    // max multiplier (final speed = base * this)
+      SPEED_RAMP_SECONDS: 70, // seconds to reach max multiplier (linear)
 
       // ===== Obstacle spawn =====
       OBST_WIDTH: 30,
       OBST_HEIGHT: 50,
       OBST_MIN_GAP: 220,      // min distance (px) to next spawn
-      OBST_MAX_GAP: 420,      // max distance (px) to next spawn
+      OBST_MAX_GAP: 520,      // max distance (px) to next spawn
 
       // Air obstacle (mutually exclusive with ground; probability based)
       AIR_OBST_PROB: 35,      // 0~100 (% chance to spawn air obstacle instead)
       AIR_OBST_Y: 160,        // top Y of the air obstacle (fixed height line)
 
       // ===== Variable jump (hold) =====
-      JUMP_MIN_HEIGHT: 80,    // px
+      JUMP_MIN_HEIGHT: 100,    // px
       JUMP_MAX_HEIGHT: 200,   // px
       JUMP_MIN_HOLD: 0.05,    // s  (<= -> min height)
       JUMP_MAX_HOLD: 0.25,    // s  (>= -> max height)
-      GRAVITY: 3000,          // px/s^2
+      GRAVITY: 5000,          // px/s^2
 
       // ===== Restart button size =====
       RESTART_BTN_WIDTH: 140, // px
@@ -211,12 +211,12 @@
       LYRICS_TEXT: "SLOTH RUN   KEEP GOING   NEVER STOP",
       LYRICS_FONT_SIZE: 24,
       LYRICS_SPACE_MULTIPLIER: 1.5,
-      LYRICS_Y: -500,  // Y position for spawned lyrics (above game area)
+      LYRICS_Y: 50,  // Y position for spawned lyrics (above game area)
 
       // ===== Finish message (displayed on character when game ends) =====
       FINISH_MESSAGE: "I'm full",
       FINISH_MESSAGE_OFFSET_X: 0,   // px offset from character center
-      FINISH_MESSAGE_OFFSET_Y: -50, // px offset from character top (negative = above)
+      FINISH_MESSAGE_OFFSET_Y: -40, // px offset from character top (negative = above)
       FINISH_MESSAGE_FONT_SIZE: 28,
       FINISH_MESSAGE_COLOR: "#ff6b35"
     };
