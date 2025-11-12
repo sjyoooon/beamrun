@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Dino Run — Touch Jump</title>
+  <title>Beam Run</title>
   <style>
     :root { --bg:#ffffff; }
 
@@ -95,7 +95,7 @@
         <div id="score" class="badge">SCORE: 0</div>
       </div>
 
-      <canvas id="game" width="900" height="260" aria-label="Dino Run"></canvas>
+      <canvas id="game" width="900" height="600" aria-label="Beam Run"></canvas>
 
       <div id="overlay">
         <button id="restartBtn" aria-label="Restart">Restart</button>
@@ -109,7 +109,7 @@
     // ===============================
     const CONFIG = {
       GAME_WIDTH: 800,
-      GAME_HEIGHT: 400,
+      GAME_HEIGHT: 600,
 
       // Player / ground
       GROUND_Y: 300,
@@ -196,11 +196,11 @@
       AIR_OBST_Y: 160,        // top Y of the air obstacle (fixed height line)
 
       // ===== Variable jump (hold) =====
-      JUMP_MIN_HEIGHT: 60,    // px
-      JUMP_MAX_HEIGHT: 130,   // px
+      JUMP_MIN_HEIGHT: 80,    // px
+      JUMP_MAX_HEIGHT: 200,   // px
       JUMP_MIN_HOLD: 0.05,    // s  (<= -> min height)
       JUMP_MAX_HOLD: 0.25,    // s  (>= -> max height)
-      GRAVITY: 2600,          // px/s^2
+      GRAVITY: 3000,          // px/s^2
 
       // ===== Restart button size =====
       RESTART_BTN_WIDTH: 140, // px
@@ -211,7 +211,7 @@
       LYRICS_TEXT: "SLOTH RUN   KEEP GOING   NEVER STOP",
       LYRICS_FONT_SIZE: 24,
       LYRICS_SPACE_MULTIPLIER: 1.5,
-      LYRICS_Y: 30,  // Y position for spawned lyrics (above game area)
+      LYRICS_Y: -500,  // Y position for spawned lyrics (above game area)
 
       // ===== Finish message (displayed on character when game ends) =====
       FINISH_MESSAGE: "I'm full",
