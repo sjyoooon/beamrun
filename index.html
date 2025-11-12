@@ -53,8 +53,10 @@
     .hud {
       pointer-events: none;
       position: absolute;
-      top: 16px; left: 16px; right: 16px;
-      display: flex; justify-content: space-between;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       font-weight: 700; font-variant-numeric: tabular-nums;
       z-index: 10;
     }
@@ -117,6 +119,13 @@
       DINO_WIDTH: 72,
       DINO_HEIGHT: 84,
 
+      // Character hitbox (rectangle collision for character)
+      // Values are relative to character position (0 = left/top edge)
+      DINO_HITBOX_OFFSET_X: 10,    // px from left
+      DINO_HITBOX_OFFSET_Y: 5,     // px from top
+      DINO_HITBOX_WIDTH: 52,       // px
+      DINO_HITBOX_HEIGHT: 74,      // px
+
       // Image sets (chosen once per run)
       DINO_PREFIX: "sloth",     DINO_IDS: ["01"],     // sloth01_a.png / sloth01_b.png ...
       OBST_PREFIX: "prop",      OBST_IDS: ["01"],     // ground:  prop01.png ...
@@ -134,6 +143,7 @@
       // Feature toggles
       ENABLE_AIR_OBSTACLES: false,      // Enable/disable air obstacles
       ENABLE_SCROLL_BACKGROUND: false,  // Enable/disable parallax background layers
+      SHOW_HITBOX: false,               // Show hitbox visualization (green semi-transparent box)
 
       // ===== 4-Layer Parallax Background =====
       // Layer 1: Far Background (원경 - 가장 느림)
@@ -180,6 +190,11 @@
       SCORE_PER_OBSTACLE: 10,
       HIGH_SCORE_KEY: "dino_highscore_touch_v1",
 
+      // Score display settings
+      SCORE_FONT_SIZE: 16,        // px
+      SCORE_Y_POSITION: 50,       // px from top
+      HIGHSCORE_Y_POSITION: 20,   // px from top
+
       // ===== Scroll speed curve (affects obstacles & background) =====
       SPEED_BASE: 280,        // px/s (base)
       SPEED_MAX_MULT: 3,    // max multiplier (final speed = base * this)
@@ -190,6 +205,12 @@
       OBST_HEIGHT: 50,
       OBST_MIN_GAP: 220,      // min distance (px) to next spawn
       OBST_MAX_GAP: 520,      // max distance (px) to next spawn
+
+      // Obstacle size multipliers (min/max for random variation)
+      OBST_SIZE_MULTIPLIER_MIN: 1.0,
+      OBST_SIZE_MULTIPLIER_MAX: 1.0,
+      AOBST_SIZE_MULTIPLIER_MIN: 1.0,
+      AOBST_SIZE_MULTIPLIER_MAX: 1.0,
 
       // Air obstacle (mutually exclusive with ground; probability based)
       AIR_OBST_PROB: 35,      // 0~100 (% chance to spawn air obstacle instead)
@@ -237,6 +258,12 @@
     restartBtn.style.height = CONFIG.RESTART_BTN_HEIGHT + "px";
     restartBtn.style.bottom = CONFIG.RESTART_BTN_OFFSET_Y + "px";
 
+    // Apply score display settings from CONFIG
+    highScoreEl.style.fontSize = CONFIG.SCORE_FONT_SIZE + "px";
+    highScoreEl.style.marginTop = CONFIG.HIGHSCORE_Y_POSITION + "px";
+    scoreEl.style.fontSize = CONFIG.SCORE_FONT_SIZE + "px";
+    scoreEl.style.marginTop = (CONFIG.SCORE_Y_POSITION - CONFIG.HIGHSCORE_Y_POSITION) + "px";
+
     // ===============================
     // Helpers
     // ===============================
@@ -281,17 +308,23 @@
       return imageData.data[idx + 3] > 128; // alpha channel
     }
 
-    // Alpha-based collision detection between two images
-    function alphaCollision(ax, ay, aw, ah, aEntry, bx, by, bw, bh, bEntry){
+    // Alpha-based collision detection between rectangle and image
+    // rectX, rectY, rectW, rectH: rectangle hitbox (character)
+    // imgX, imgY, imgW, imgH: image position and size (obstacle)
+    // imgEntry: image entry with pixel data (obstacle)
+    function rectAlphaCollision(rectX, rectY, rectW, rectH, imgX, imgY, imgW, imgH, imgEntry){
       // Calculate overlap rectangle
-      const overlapX = Math.max(ax, bx);
-      const overlapY = Math.max(ay, by);
-      const overlapRight = Math.min(ax + aw, bx + bw);
-      const overlapBottom = Math.min(ay + ah, by + bh);
+      const overlapX = Math.max(rectX, imgX);
+      const overlapY = Math.max(rectY, imgY);
+      const overlapRight = Math.min(rectX + rectW, imgX + imgW);
+      const overlapBottom = Math.min(rectY + rectH, imgY + imgH);
       const overlapW = overlapRight - overlapX;
       const overlapH = overlapBottom - overlapY;
 
       if(overlapW <= 0 || overlapH <= 0) return false;
+
+      // If no pixel data available, fall back to rectangle collision
+      if(!imgEntry || !imgEntry.pixelData) return true;
 
       // Sample pixels in the overlap region (check every few pixels for performance)
       const step = 3; // Check every 3 pixels
@@ -300,17 +333,12 @@
           const worldX = overlapX + dx;
           const worldY = overlapY + dy;
 
-          // Map to image A coordinates
-          const aImgX = ((worldX - ax) / aw) * aEntry.width;
-          const aImgY = ((worldY - ay) / ah) * aEntry.height;
+          // Map to image coordinates
+          const imgPixelX = ((worldX - imgX) / imgW) * imgEntry.width;
+          const imgPixelY = ((worldY - imgY) / imgH) * imgEntry.height;
 
-          // Map to image B coordinates
-          const bImgX = ((worldX - bx) / bw) * bEntry.width;
-          const bImgY = ((worldY - by) / bh) * bEntry.height;
-
-          // Check if both pixels are opaque
-          if(isPixelOpaque(aEntry.pixelData, aImgX, aImgY) &&
-             isPixelOpaque(bEntry.pixelData, bImgX, bImgY)){
+          // Check if pixel is opaque in the obstacle image
+          if(isPixelOpaque(imgEntry.pixelData, imgPixelX, imgPixelY)){
             return true; // Collision detected!
           }
         }
@@ -503,15 +531,20 @@
 
       const e = imageCache.get(key) || loadImageOnce(key);
 
-      // Use original image size * scale if loaded, otherwise use fallback size
+      // Calculate size multiplier (random between min and max)
+      const minMult = useAir ? CONFIG.AOBST_SIZE_MULTIPLIER_MIN : CONFIG.OBST_SIZE_MULTIPLIER_MIN;
+      const maxMult = useAir ? CONFIG.AOBST_SIZE_MULTIPLIER_MAX : CONFIG.OBST_SIZE_MULTIPLIER_MAX;
+      const sizeMult = (minMult === maxMult) ? minMult : randFloat(minMult, maxMult);
+
+      // Use original image size * scale * size multiplier if loaded, otherwise use fallback size
       let w, h;
       if(e.loaded && e.ok && e.width > 0 && e.height > 0){
         const scale = useAir ? CONFIG.AOBST_IMAGE_SCALE : CONFIG.OBST_IMAGE_SCALE;
-        w = e.width * scale;
-        h = e.height * scale;
+        w = e.width * scale * sizeMult;
+        h = e.height * scale * sizeMult;
       }else{
-        w = CONFIG.OBST_WIDTH;
-        h = CONFIG.OBST_HEIGHT;
+        w = CONFIG.OBST_WIDTH * sizeMult;
+        h = CONFIG.OBST_HEIGHT * sizeMult;
       }
 
       if(useAir){
@@ -632,43 +665,27 @@
           scoreEl.textContent = `SCORE: ${state.score}`;
         }
 
-        // Get current dino frame image to determine actual boundary
-        const frame = Math.floor(state.animTime * 8) % 2;
-        const dinoKey = `${CONFIG.DINO_PREFIX}${curDinoId}_${frame===0?"a":"b"}.png`;
-        const dinoEntry = imageCache.get(dinoKey);
+        // Character hitbox (rectangle collision)
+        const hitboxX = dino.x + CONFIG.DINO_HITBOX_OFFSET_X;
+        const hitboxY = dino.y + CONFIG.DINO_HITBOX_OFFSET_Y;
+        const hitboxW = CONFIG.DINO_HITBOX_WIDTH;
+        const hitboxH = CONFIG.DINO_HITBOX_HEIGHT;
 
-        // Calculate actual dino dimensions (image boundary if loaded, fallback to CONFIG otherwise)
-        let dinoDrawW, dinoDrawH;
-        if(dinoEntry && dinoEntry.loaded && dinoEntry.ok){
-          dinoDrawW = dinoEntry.width * CONFIG.DINO_IMAGE_SCALE;
-          dinoDrawH = dinoEntry.height * CONFIG.DINO_IMAGE_SCALE;
-        }else{
-          dinoDrawW = dino.w;
-          dinoDrawH = dino.h;
-        }
-
-        // Check collision with alpha-based detection if images are loaded
+        // Check collision: character rectangle hitbox vs obstacle alpha pixels
         let collision = false;
-        // Stage 1: Rectangle collision using actual image boundaries
-        if(rectsOverlap(dino.x,dino.y,dinoDrawW,dinoDrawH, ob.x,ob.y,ob.w,ob.h)){
-          // Get obstacle image
-          const isAir = !!ob.air;
-          const obKey = isAir
-            ? `${CONFIG.AOBST_PREFIX}${curAirId}.png`
-            : `${CONFIG.OBST_PREFIX}${curGroundId}.png`;
-          const obEntry = imageCache.get(obKey);
 
-          // Stage 2: Use alpha collision if both images have pixel data
-          if(dinoEntry && dinoEntry.pixelData && obEntry && obEntry.pixelData){
-            collision = alphaCollision(
-              dino.x, dino.y, dinoDrawW, dinoDrawH, dinoEntry,
-              ob.x, ob.y, ob.w, ob.h, obEntry
-            );
-          }else{
-            // Fallback to rectangle collision
-            collision = true;
-          }
-        }
+        // Get obstacle image
+        const isAir = !!ob.air;
+        const obKey = isAir
+          ? `${CONFIG.AOBST_PREFIX}${curAirId}.png`
+          : `${CONFIG.OBST_PREFIX}${curGroundId}.png`;
+        const obEntry = imageCache.get(obKey);
+
+        // Use rectangle-alpha collision (character rect vs obstacle alpha pixels)
+        collision = rectAlphaCollision(
+          hitboxX, hitboxY, hitboxW, hitboxH,
+          ob.x, ob.y, ob.w, ob.h, obEntry
+        );
 
         if(collision){
           gameOver(); render(); return;
@@ -712,6 +729,26 @@
 
       // Obstacles
       for(const ob of obstacles) drawObstacle(ob);
+
+      // Hitbox visualization (if enabled)
+      if(CONFIG.SHOW_HITBOX){
+        // Draw character hitbox
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.7)";
+        ctx.fillStyle = "rgba(0, 255, 0, 0.2)";
+        ctx.lineWidth = 2;
+        const hitboxX = dino.x + CONFIG.DINO_HITBOX_OFFSET_X;
+        const hitboxY = dino.y + CONFIG.DINO_HITBOX_OFFSET_Y;
+        ctx.fillRect(hitboxX, hitboxY, CONFIG.DINO_HITBOX_WIDTH, CONFIG.DINO_HITBOX_HEIGHT);
+        ctx.strokeRect(hitboxX, hitboxY, CONFIG.DINO_HITBOX_WIDTH, CONFIG.DINO_HITBOX_HEIGHT);
+
+        // Draw obstacle hitboxes
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.7)";
+        ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+        for(const ob of obstacles){
+          ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+          ctx.strokeRect(ob.x, ob.y, ob.w, ob.h);
+        }
+      }
 
       // Lyrics
       ctx.font = `${CONFIG.LYRICS_FONT_SIZE}px bold Arial`;
