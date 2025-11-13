@@ -224,8 +224,9 @@
       // ===== Obstacle spawn =====
       OBST_WIDTH: 30,
       OBST_HEIGHT: 50,
-      OBST_MIN_GAP: 365,      // 300 min distance (px) to next spawn
-      OBST_MAX_GAP: 600,      // 700 max distance (px) to next spawn
+      OBST_BASE_GAP: 365,              // Base distance (px) for obstacle spacing
+      OBST_GAP_MULTIPLIER_MIN: 1.0,    // Min gap multiplier
+      OBST_GAP_MULTIPLIER_MAX: 1.64,   // Max gap multiplier (365 * 1.64 ≈ 600)
 
       // Obstacle size multipliers (min/max for random variation)
       OBST_SIZE_MULTIPLIER_MIN: 0.8,//0.8
@@ -591,7 +592,10 @@
       layerMidTiles.length=0; layerForeTiles.length=0;
       layerFarAdjusted=false; layerBgAdjusted=false;
       layerMidAdjusted=false; layerForeAdjusted=false;
-      randGap = randInt(CONFIG.OBST_MIN_GAP, CONFIG.OBST_MAX_GAP);
+      // Initialize gap with average multipliers
+      const avgGapMult = (CONFIG.OBST_GAP_MULTIPLIER_MIN + CONFIG.OBST_GAP_MULTIPLIER_MAX) / 2;
+      const avgSizeMult = (CONFIG.OBST_SIZE_MULTIPLIER_MIN + CONFIG.OBST_SIZE_MULTIPLIER_MAX) / 2;
+      randGap = CONFIG.OBST_BASE_GAP * avgGapMult * avgSizeMult;
 
       // Lyrics system initialization
       letters.length = 0;
@@ -708,7 +712,9 @@
       }
 
       state.distSinceLast = 0;
-      randGap = randInt(CONFIG.OBST_MIN_GAP, CONFIG.OBST_MAX_GAP);
+      // Calculate next gap: base_gap * gap_multiplier(random) * size_multiplier(current obstacle)
+      const gapMult = randFloat(CONFIG.OBST_GAP_MULTIPLIER_MIN, CONFIG.OBST_GAP_MULTIPLIER_MAX);
+      randGap = CONFIG.OBST_BASE_GAP * gapMult * sizeMult;
     }
 
     // ===============================
