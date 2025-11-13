@@ -989,18 +989,18 @@
         const currentTime = state.lastTime / 1000; // Convert to seconds
         const elapsed = currentTime - currentSequentialWord.spawnTime;
 
-        // Calculate punch effect (scale animation - like score popup)
+        // Calculate punch effect (scale animation - same as score popup)
         let scale = 1.0;
         const punchDuration = 0.3; // 0.3 seconds punch animation
         if(elapsed < punchDuration){
           const t = elapsed / punchDuration;
-          // Ease out cubic: 1 - (1-t)^3
+          // Apply ease-out timing function: 1 - (1-t)^3
           const easeOut = 1 - Math.pow(1 - t, 3);
-          // Scale from 1.0 to 1.3 and back to 1.0
-          if(t < 0.5){
-            scale = 1.0 + (0.3 * (t / 0.5)); // 1.0 -> 1.3
+          // Scale from 1.0 to 1.2 at 50%, then back to 1.0 (same as score)
+          if(easeOut < 0.5){
+            scale = 1.0 + (0.2 * (easeOut / 0.5)); // 1.0 -> 1.2
           }else{
-            scale = 1.3 - (0.3 * ((t - 0.5) / 0.5)); // 1.3 -> 1.0
+            scale = 1.2 - (0.2 * ((easeOut - 0.5) / 0.5)); // 1.2 -> 1.0
           }
         }
 
