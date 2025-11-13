@@ -251,6 +251,7 @@
       RESTART_BTN_OFFSET_Y: 20, // px from bottom of game area (outside)
 
       // ===== Lyrics spawn system =====
+      ENABLE_LYRICS: true,        // Enable/disable scrolling lyrics feature
       //LYRICS_TEXT: "🍜 Happy birth day to you     Happy birth day to you      Happy birth day dear Beam sloth      Happy birth day to you      ",
       LYRICS_TEXT: "",
       LYRICS_FONT_SIZE: 60,
@@ -268,6 +269,7 @@
       SEQUENTIAL_LYRICS_FONT_SIZE: 48,     // Font size for sequential lyrics
       SEQUENTIAL_LYRICS_FONT_BOLD: true,   // Set to true for bold sequential lyrics
       SEQUENTIAL_LYRICS_COLOR: "#000000",  // Sequential lyrics text color
+      SEQUENTIAL_LYRICS_ALPHA: 0.7,        // Sequential lyrics text alpha (0.0-1.0, default: 1.0)
       SEQUENTIAL_LYRICS_SHOW_DURATION: 1.0,  // Duration to show word before fading (seconds)
       SEQUENTIAL_LYRICS_FADE_DURATION: 1.0,   // Duration of fade out animation (seconds)
 
@@ -815,44 +817,46 @@
       // Spawns
       trySpawnObstacle(speed);
 
-      // Lyrics spawn system
-      elapsedTime += dt;
+      // Lyrics spawn system (only if enabled)
+      if(CONFIG.ENABLE_LYRICS){
+        elapsedTime += dt;
 
-      // Handle lyrics repeat delay
-      if(lyricsIndex >= CONFIG.LYRICS_TEXT.length){
-        if(lyricsRepeatDelayRemaining > 0){
-          lyricsRepeatDelayRemaining -= dt;
-        }else{
-          // Reset lyrics to repeat
-          lyricsIndex = 0;
-          nextSpawnTime = elapsedTime;
-          lyricsRepeatDelayRemaining = CONFIG.LYRICS_REPEAT_DELAY;
+        // Handle lyrics repeat delay
+        if(lyricsIndex >= CONFIG.LYRICS_TEXT.length){
+          if(lyricsRepeatDelayRemaining > 0){
+            lyricsRepeatDelayRemaining -= dt;
+          }else{
+            // Reset lyrics to repeat
+            lyricsIndex = 0;
+            nextSpawnTime = elapsedTime;
+            lyricsRepeatDelayRemaining = CONFIG.LYRICS_REPEAT_DELAY;
+          }
         }
-      }
 
-      // Spawn lyrics characters
-      while(lyricsIndex < CONFIG.LYRICS_TEXT.length && elapsedTime >= nextSpawnTime){
-        const ch = CONFIG.LYRICS_TEXT[lyricsIndex++];
-        if(ch === " "){
-          nextSpawnTime += baseInterval * CONFIG.LYRICS_SPACE_MULTIPLIER;
-          continue;
+        // Spawn lyrics characters
+        while(lyricsIndex < CONFIG.LYRICS_TEXT.length && elapsedTime >= nextSpawnTime){
+          const ch = CONFIG.LYRICS_TEXT[lyricsIndex++];
+          if(ch === " "){
+            nextSpawnTime += baseInterval * CONFIG.LYRICS_SPACE_MULTIPLIER;
+            continue;
+          }
+          letters.push({
+            char: ch,
+            x: CONFIG.GAME_WIDTH + CONFIG.LYRICS_FONT_SIZE,
+            y: CONFIG.LYRICS_Y,
+            w: CONFIG.LYRICS_FONT_SIZE,
+            speed: speed
+          });
+          nextSpawnTime += baseInterval;
         }
-        letters.push({
-          char: ch,
-          x: CONFIG.GAME_WIDTH + CONFIG.LYRICS_FONT_SIZE,
-          y: CONFIG.LYRICS_Y,
-          w: CONFIG.LYRICS_FONT_SIZE,
-          speed: speed
-        });
-        nextSpawnTime += baseInterval;
-      }
 
-      // Lyrics update
-      for(let i = letters.length - 1; i >= 0; i--){
-        const letter = letters[i];
-        letter.x -= speed * dt;
-        if(letter.x + letter.w < -10){
-          letters.splice(i, 1);
+        // Lyrics update
+        for(let i = letters.length - 1; i >= 0; i--){
+          const letter = letters[i];
+          letter.x -= speed * dt;
+          if(letter.x + letter.w < -10){
+            letters.splice(i, 1);
+          }
         }
       }
 
@@ -976,12 +980,14 @@
         }
       }
 
-      // Lyrics
-      const lyricsFontWeight = CONFIG.LYRICS_FONT_BOLD ? "bold" : "normal";
-      ctx.font = `${lyricsFontWeight} ${CONFIG.LYRICS_FONT_SIZE}px system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", Arial, sans-serif`;
-      ctx.fillStyle = hexToRgba(CONFIG.LYRICS_COLOR, CONFIG.LYRICS_ALPHA);
-      for(const l of letters){
-        ctx.fillText(l.char, l.x, l.y);
+      // Lyrics (only if enabled)
+      if(CONFIG.ENABLE_LYRICS){
+        const lyricsFontWeight = CONFIG.LYRICS_FONT_BOLD ? "bold" : "normal";
+        ctx.font = `${lyricsFontWeight} ${CONFIG.LYRICS_FONT_SIZE}px system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans", Arial, sans-serif`;
+        ctx.fillStyle = hexToRgba(CONFIG.LYRICS_COLOR, CONFIG.LYRICS_ALPHA);
+        for(const l of letters){
+          ctx.fillText(l.char, l.x, l.y);
+        }
       }
 
       // Sequential lyrics (centered word with punch effect and fade out)
@@ -1022,8 +1028,8 @@
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
 
-          // Apply alpha
-          ctx.globalAlpha = alpha;
+          // Apply alpha (multiply fade alpha with config alpha)
+          ctx.globalAlpha = alpha * CONFIG.SEQUENTIAL_LYRICS_ALPHA;
           ctx.fillStyle = CONFIG.SEQUENTIAL_LYRICS_COLOR;
 
           // Apply scale transform
